@@ -28,6 +28,8 @@ import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 
+/*Html to json parser - no html formatting*/
+
 public class Web_to_json_parser {
 
 	/* Enter the respective path of a XWiki page */
@@ -67,9 +69,9 @@ public class Web_to_json_parser {
 		JsonGenerator generator = factory.createGenerator(new File(file),
 				JsonEncoding.UTF8);
 		generator.writeStartObject();
-		generator.writeStringField("Page:", pageName);
-		generator.writeStringField("Title:", elements_title.text());
-		generator.writeStringField("Result:", element_res.text());
+		generator.writeStringField("Page", pageName);
+		generator.writeStringField("Title", elements_title.text());
+		generator.writeStringField("Result", element_res.text());
 		generator.writeEndObject();
 		generator.close();
 		System.out.println(readFile(file));
