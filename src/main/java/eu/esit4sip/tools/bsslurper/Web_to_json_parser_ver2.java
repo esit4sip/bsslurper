@@ -72,9 +72,9 @@ public class Web_to_json_parser_ver2 {
 		JsonGenerator generator = factory.createGenerator(new File(file),
 				JsonEncoding.UTF8);
 		generator.writeStartObject();
-		generator.writeStringField("Page:", pageName);
-		generator.writeStringField("Title:", elements_title.outerHtml());
-		generator.writeStringField("Result:", element_res.outerHtml());
+		generator.writeStringField("Page", pageName);
+		generator.writeStringField("Title", elements_title.outerHtml());
+		generator.writeStringField("Result", element_res.outerHtml());
 		generator.writeEndObject();
 		generator.close();
 		System.out.println(readFile(file));
