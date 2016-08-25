@@ -33,7 +33,7 @@ import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 
-/*Parsing html to json (Tags parsing)*/
+/*Parsing html to json (Tags parsing)- no html formatting*/
 
 public class Html_to_json_tags_version {
 
@@ -69,8 +69,8 @@ public class Html_to_json_tags_version {
 		JsonGenerator generator = factory.createGenerator(new File(file),
 				JsonEncoding.UTF8);
 		generator.writeStartObject();
-		generator.writeStringField("Tag name:", tag_name);
-		generator.writeStringField("Tag URL:", tag_url);
+		generator.writeStringField("Tag name", tag_name);
+		generator.writeStringField("Tag URL", tag_url);
 		generator.writeEndObject();
 		generator.close();
 		System.out.println(readFile(file));
