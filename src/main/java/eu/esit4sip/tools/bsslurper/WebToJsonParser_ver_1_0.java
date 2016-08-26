@@ -1,20 +1,14 @@
-package eu.esit4sip.tools.bsslurper;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
-
 import javax.net.ssl.SSLContext;
-
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
@@ -28,20 +22,24 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 
-/*Parsing html to json (Tags parsing)*/
+/*Html to json parsing - no html formatting*/
 
-public class Html_to_json_tags_version {
+public class WebToJsonParser_ver_1_0 {
 
-	/* Enter the respective path of XWiki tags page */
-	public static String path = "Main/Tags";
+	/* Enter the respective path of a XWiki page */
+	public static String path = "ExperienceReports/Lyceum+of+Aradippou";
+		
+	/*html element id for XWiki main document in a page*/
+	public static String queryElement_content="xwikicontent";
 
-	/* html element id for tags page content */
-	public static String queryElement_tags_content = "xwikicontent";
+	/*html element id for tags in a page*/
+	public static String queryElement_tags="xdocTags";
+	/*html element id for page title*/
+	public static String queryElement_title="wikiexternallink";
 	public static CloseableHttpClient httpclient;
 
 	/* Read a file and return a String method */
@@ -63,27 +61,27 @@ public class Html_to_json_tags_version {
 	}
 
 	/* A method to generate json from xml */
-	public static void xml_to_json(String file, String tag_name, String tag_url)
+	public static void xml_to_json(String file, String pageName, Elements elements_title,  Element element_res)
 			throws IOException {
 		JsonFactory factory = new JsonFactory();
 		JsonGenerator generator = factory.createGenerator(new File(file),
 				JsonEncoding.UTF8);
 		generator.writeStartObject();
-		generator.writeStringField("Tag name:", tag_name);
-		generator.writeStringField("Tag URL:", tag_url);
+		generator.writeStringField("Page", pageName);
+		generator.writeStringField("Title", elements_title.text());
+		generator.writeStringField("Result", element_res.text());
 		generator.writeEndObject();
 		generator.close();
 		System.out.println(readFile(file));
 	}
 
 	/* Method to parse html fragments to json */
-	public static void html_to_json() throws URISyntaxException, IOException,
-			Exception {
-		String tags_url = null;
-		String tags_name = null;
+	public static void html_to_json() throws URISyntaxException,
+			IOException, Exception {
+
 		URIBuilder builder = new URIBuilder();
 		builder.setScheme("https").setHost("wiki.esit4sip.eu")
-				.setPath("/bin/view/" + path);
+				.setPath("/bin/view/"+path);
 		URI uri = builder.build();
 		HttpGet httpget = new HttpGet(uri);
 		httpget.addHeader(HttpHeaders.ACCEPT, "application/xml");
@@ -107,19 +105,18 @@ public class Html_to_json_tags_version {
 
 		String responseBody = httpclient.execute(httpget, responseHandler);
 		Document document = Jsoup.parse(new String(responseBody));
-		Element el_tags_content = document
-				.getElementById(queryElement_tags_content);
-		Elements el_tag_url = el_tags_content.select("a[href]");
+		String pageName= document.title();
+		Element content_element_content = document.getElementById(queryElement_content);
+		Element content_element_tags = document.getElementById(queryElement_tags);
+		Elements content_element_title = document.getElementsByClass(queryElement_title);
+		
+        /*Parse xml to json method call - main document parsing*/
+		System.out.println("Main document results:");
+		xml_to_json("output.json", pageName, content_element_title, content_element_content);
+		 /*Parse xml to json method call - tags parsing*/
+		System.out.println("Tags results:");
+		xml_to_json("output.json", pageName, content_element_title, content_element_tags);
 
-		for (Element link : el_tag_url) {
-
-			tags_name = link.text();
-			tags_url = link.attr("href");
-
-			/* Parse xml to json method call - tags parsing */
-			xml_to_json("tags.json", tags_name, "https://wiki.esit4sip.eu"
-					+ tags_url);
-		}
 	}
 
 	public final static void main(String[] args) throws Exception {
@@ -133,7 +130,7 @@ public class Html_to_json_tags_version {
 				SSLConnectionSocketFactory.getDefaultHostnameVerifier());
 		httpclient = HttpClients.custom().setSSLSocketFactory(sslsf).build();
 		try {
-			/* Call the main parsing method */
+			/*Call the main parsing method*/
 			html_to_json();
 
 		} finally {
