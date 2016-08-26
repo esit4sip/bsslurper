@@ -1,3 +1,5 @@
+package eu.esit4sip.tools.bsslurper;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -27,15 +29,19 @@ import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 
-/*Parsing html to json (Tags parsing)- no html formatting*/
+/*Parsing html to json retaining html format (Tags and Main document parsing per page)*/
 
-public class HtmlToJsonTagsParser_ver_1_0 {
+public class WebToJsonParser1 {
 
-	/* Enter the respective path of XWiki tags page */
-	public static String path = "Main/Tags";
+	/* Enter the respective path of a XWiki page */
+	 public static String path ="ExperienceReports/Lyceum+of+Aradippou";
 
-	/* html element id for tags page content */
-	public static String queryElement_tags_content = "xwikicontent";
+	/* html element id for XWiki main document in a page */
+	public static String queryElement_content="xwikicontent";
+	/* html element id for tags in a page */
+	public static String queryElement_tags = "xdocTags";
+	/* html element id for page title */
+	public static String queryElement_title = "wikiexternallink";
 	public static CloseableHttpClient httpclient;
 
 	/* Read a file and return a String method */
@@ -55,29 +61,30 @@ public class HtmlToJsonTagsParser_ver_1_0 {
 			br.close();
 		}
 	}
+	
+
 
 	/* A method to generate json from xml */
-	public static void xml_to_json(String file, String tag_name, String tag_url)
-			throws IOException {
+	public static void xml_to_json(String file, String pageName,
+			Elements elements_title, Element element_res) throws IOException {
 		JsonFactory factory = new JsonFactory();
 		JsonGenerator generator = factory.createGenerator(new File(file),
 				JsonEncoding.UTF8);
 		generator.writeStartObject();
-		generator.writeStringField("Tag name", tag_name);
-		generator.writeStringField("Tag URL", tag_url);
+		generator.writeStringField("Page", pageName);
+		generator.writeStringField("Title", elements_title.outerHtml());
+		generator.writeStringField("Result", element_res.outerHtml());
 		generator.writeEndObject();
 		generator.close();
 		System.out.println(readFile(file));
 	}
 
-	/* Method to parse html fragments to json */
+	/* Method to parse html fragments to json (retain html formatting) */
 	public static void html_to_json() throws URISyntaxException, IOException,
 			Exception {
-		String tags_url = null;
-		String tags_name = null;
+
 		URIBuilder builder = new URIBuilder();
-		builder.setScheme("https").setHost("wiki.esit4sip.eu")
-				.setPath("/bin/view/" + path);
+		builder.setScheme("https").setHost("wiki.esit4sip.eu").setPath("/bin/view/"+path);
 		URI uri = builder.build();
 		HttpGet httpget = new HttpGet(uri);
 		httpget.addHeader(HttpHeaders.ACCEPT, "application/xml");
@@ -101,19 +108,22 @@ public class HtmlToJsonTagsParser_ver_1_0 {
 
 		String responseBody = httpclient.execute(httpget, responseHandler);
 		Document document = Jsoup.parse(new String(responseBody));
-		Element el_tags_content = document
-				.getElementById(queryElement_tags_content);
-		Elements el_tag_url = el_tags_content.select("a[href]");
+		String pageName = document.title();
+		Elements content_element_title = document
+				.getElementsByClass(queryElement_title);
+		Element content_element_content = document
+				.getElementById(queryElement_content);
+		Element content_element_tags = document
+				.getElementById(queryElement_tags);
+		
 
-		for (Element link : el_tag_url) {
+		/* Parse xml to json method call - main document parsing */
+		System.out.println("Main document results:");
+		xml_to_json("output.json", pageName, content_element_title,	content_element_content);
+		/* Parse xml to json method call - tags parsing */
+		System.out.println("Tags results:");
+		xml_to_json("pages1.json", pageName, content_element_title,	content_element_tags);
 
-			tags_name = link.text();
-			tags_url = link.attr("href");
-
-			/* Parse xml to json method call - tags parsing */
-			xml_to_json("output.json", tags_name, "https://wiki.esit4sip.eu"
-					+ tags_url);
-		}
 	}
 
 	public final static void main(String[] args) throws Exception {

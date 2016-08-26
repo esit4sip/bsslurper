@@ -1,3 +1,5 @@
+package eu.esit4sip.tools.bsslurper;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -28,7 +30,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 
 /*Html to json parsing - no html formatting*/
 
-public class WebToJsonParser_ver_1_0 {
+public class WebToJsonParser0 {
 
 	/* Enter the respective path of a XWiki page */
 	public static String path = "ExperienceReports/Lyceum+of+Aradippou";
@@ -112,10 +114,10 @@ public class WebToJsonParser_ver_1_0 {
 		
         /*Parse xml to json method call - main document parsing*/
 		System.out.println("Main document results:");
-		xml_to_json("output.json", pageName, content_element_title, content_element_content);
+		xml_to_json("pages2.json", pageName, content_element_title, content_element_content);
 		 /*Parse xml to json method call - tags parsing*/
 		System.out.println("Tags results:");
-		xml_to_json("output.json", pageName, content_element_title, content_element_tags);
+		xml_to_json("pages3.json", pageName, content_element_title, content_element_tags);
 
 	}
 
