@@ -1,5 +1,4 @@
-package main.java.bsslurper;
-
+package eu.esit4sip.tools.bsslurper;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
