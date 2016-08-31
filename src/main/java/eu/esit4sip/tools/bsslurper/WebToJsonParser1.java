@@ -1,4 +1,4 @@
-package eu.esit4sip.tools.bsslurper;
+package main.java.bsslurper;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -122,7 +122,7 @@ public class WebToJsonParser1 {
 		xml_to_json("output.json", pageName, content_element_title,	content_element_content);
 		/* Parse xml to json method call - tags parsing */
 		System.out.println("Tags results:");
-		xml_to_json("pages1.json", pageName, content_element_title,	content_element_tags);
+		xml_to_json("tag-pages.json", pageName, content_element_title,	content_element_tags);
 
 	}
 

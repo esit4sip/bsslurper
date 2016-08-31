@@ -1,4 +1,4 @@
-package eu.esit4sip.tools.bsslurper;
+package main.java.bsslurper;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -31,7 +31,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 
 /*Parsing html to json (Tags parsing)- no html formatting*/
 
-public class HtmlToJsonTagsParser {
+public class HtmlToJsonTagsParser0 {
 
 	/* Enter the respective path of XWiki tags page */
 	public static String path = "Main/Tags";
