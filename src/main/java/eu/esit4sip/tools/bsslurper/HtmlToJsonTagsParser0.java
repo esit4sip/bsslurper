@@ -38,7 +38,7 @@ public class HtmlToJsonTagsParser0 {
 
 	/* html element id for tags page content */
 	public static String queryElement_tags_content = "xwikicontent";
-	public static CloseableHttpClient httpclient;
+	public static CloseableHttpClient httpclient = Util.createTolerantHttpClient();
 
 	/* Read a file and return a String method */
 	public static String readFile(String fileName) throws IOException {
@@ -120,14 +120,6 @@ public class HtmlToJsonTagsParser0 {
 
 	public final static void main(String[] args) throws Exception {
 
-		/* Trust self-signed certificates */
-		SSLContext sslcontext = SSLContexts.custom()
-				.loadTrustMaterial(null, new TrustSelfSignedStrategy()).build();
-		/* Allow TLSv1 protocol only */
-		SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(
-				sslcontext, new String[] { "TLSv1" }, null,
-				SSLConnectionSocketFactory.getDefaultHostnameVerifier());
-		httpclient = HttpClients.custom().setSSLSocketFactory(sslsf).build();
 		try {
 			/* Call the main parsing method */
 			html_to_json();

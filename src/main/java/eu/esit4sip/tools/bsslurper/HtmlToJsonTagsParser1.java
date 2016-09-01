@@ -65,7 +65,7 @@ public class HtmlToJsonTagsParser1 {
 	public static final String queryElement_tags_pages = "xitemcontainer";
 	public static final String queryElement_title = "wikiexternallink";
 	public static final String queryElement_tags = "xdocTags";
-	public static CloseableHttpClient httpclient;
+	public static CloseableHttpClient httpclient = Util.createTolerantHttpClient();
 	/* Store urls of tag pages */
 	public static ArrayList<String> tagsUrl = new ArrayList<String>();
 	/* Store urls of pages that host actual tags */
@@ -282,22 +282,7 @@ public class HtmlToJsonTagsParser1 {
 	}
 
 	
-	/*Configures http connection*/
-	public static void configureConnection()
-			throws KeyManagementException, NoSuchAlgorithmException, KeyStoreException {
-		/* Trust self-signed certificates */
-		SSLContext sslcontext = SSLContexts.custom().loadTrustMaterial(null, new TrustSelfSignedStrategy()).build();
-		/* Allow TLSv1 protocol only */
-		SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslcontext, new String[] { "TLSv1" }, null,
-				SSLConnectionSocketFactory.getDefaultHostnameVerifier());
-		Registry<ConnectionSocketFactory> reg = RegistryBuilder.<ConnectionSocketFactory>create().register("https", sslsf)
-				.build();
-		/*Register a pooling connection manager*/
-		HttpClientConnectionManager cm = new PoolingHttpClientConnectionManager(reg);
-		httpclient = HttpClients.custom().setConnectionManager(cm).build();
 
-	}
-	
 	/*Prints the System.out console stream (Map content) to a file*/
 
 	public static void printStream(String jsonString, String fileOut) {
@@ -381,7 +366,6 @@ public class HtmlToJsonTagsParser1 {
 		deleteFile("tags-out.json");
 
 		setSelector(0);
-		configureConnection();
 
 		try {
 			/* no threading */

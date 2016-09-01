@@ -41,7 +41,7 @@ public class WebToJsonParser1 {
 	public static String queryElement_tags = "xdocTags";
 	/* html element id for page title */
 	public static String queryElement_title = "wikiexternallink";
-	public static CloseableHttpClient httpclient;
+	public static CloseableHttpClient httpclient = Util.createTolerantHttpClient();
 
 	/* Read a file and return a String method */
 	public static String readFile(String fileName) throws IOException {
@@ -127,14 +127,6 @@ public class WebToJsonParser1 {
 
 	public final static void main(String[] args) throws Exception {
 
-		/* Trust self-signed certificates */
-		SSLContext sslcontext = SSLContexts.custom()
-				.loadTrustMaterial(null, new TrustSelfSignedStrategy()).build();
-		/* Allow TLSv1 protocol only */
-		SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(
-				sslcontext, new String[] { "TLSv1" }, null,
-				SSLConnectionSocketFactory.getDefaultHostnameVerifier());
-		httpclient = HttpClients.custom().setSSLSocketFactory(sslsf).build();
 		try {
 			/* Call the main parsing method */
 			html_to_json();

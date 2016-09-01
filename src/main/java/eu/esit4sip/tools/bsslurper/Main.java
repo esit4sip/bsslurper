@@ -9,5 +9,6 @@ public class Main {
         HtmlToJsonTagsParser1.main(args);
         WebToJsonParser0.main(args);
         WebToJsonParser1.main(args);
+        TagHierarchyFetcher.main(args);
     }
 }
