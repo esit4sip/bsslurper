@@ -1,20 +1,26 @@
-package eu.esit4sip.tools.bsslurper;
+package main.java.bsslurper;
+
+import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeSet;
 
 import javax.net.ssl.SSLContext;
 import org.apache.http.HttpEntity;
@@ -42,15 +48,16 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import com.fasterxml.jackson.core.JsonProcessingException;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-
 /*
- * A class that parses html pages to json format using jsoup and 
- * JAVA list/map methods. No actual Json API was used for storing in 
- * json format.
+ * A class that parses html pages to json format using Jsoup and 
+ * Jackson API.
  * 
  * */
 
@@ -65,7 +72,7 @@ public class HtmlToJsonTagsParser1 {
 	public static final String queryElement_tags_pages = "xitemcontainer";
 	public static final String queryElement_title = "wikiexternallink";
 	public static final String queryElement_tags = "xdocTags";
-	public static CloseableHttpClient httpclient = Util.createTolerantHttpClient();
+	public static CloseableHttpClient httpclient;
 	/* Store urls of tag pages */
 	public static ArrayList<String> tagsUrl = new ArrayList<String>();
 	/* Store urls of pages that host actual tags */
@@ -113,18 +120,25 @@ public class HtmlToJsonTagsParser1 {
 		}
 	}
 	
-	/*
-	 * *Method that: a) Jsoup parsing each tag page and stores them to JAVA ArrayList and
-	 *  b) Jsoup parsing actual tags' pages and stores them to JAVA Map 
-	 */
+	
+	
+	
+	
+	
 
+	/*
+	 * *Method that: a) Jsoup parsing each tag page and stores them to JAVA
+	 * ArrayList and b) Jsoup parsing actual tags' pages and stores them to a json file
+	 * 
+	 */
 	public static void jsoupParsing(String response, Integer parserSelector) {
 		Document document;
-		List<Object> list = new ArrayList<Object>();
-		String jsonString = null;
-		ObjectMapper om = new ObjectMapper();
+		List<String> list = new ArrayList<String>();
+		ObjectWriter om = new ObjectMapper().writer().with(SerializationFeature.INDENT_OUTPUT)
+				.withDefaultPrettyPrinter();
 
-		/* Tags' pages parsing and storing*/
+
+		/* Tags' pages parsing and storing */
 		if (parserSelector == 0) {
 
 			document = Jsoup.parse(new String(response));
@@ -139,21 +153,20 @@ public class HtmlToJsonTagsParser1 {
 			}
 
 		}
-		/* 
-		 * Actual tags' pages content parsing and storing:
-		 * Parses and stores the following:
-		 * a. Page name
-		 * b. Page url
-		 * c. Page title (retains html format)
-		 * d. Tags' names
-		 * */
+		/*
+		 * Actual tags' pages content parsing and storing: Parses and stores the
+		 * following: a. Page name b. Page url c. Page title (retains html
+		 * format) d. Tags' names
+		 */
 		if (parserSelector == 1) {
 
 			document = Jsoup.parse(new String(response));
 
 			String page_name = document.title().replace(".WebHome", "").replace("- XWiki", "");
+			
 
 			map.put("Page name", page_name);
+
 			Element pages_url = document.select("link[rel=canonical]").first();
 
 			String page_url = pages_url.attr("href");
@@ -172,24 +185,33 @@ public class HtmlToJsonTagsParser1 {
 			list.add(tag_names);
 
 			map.put("Tag name", list);
+		    
 
 			try {
+				
+				/*Writes the Map content to a json file */
 
-				om.enable(SerializationFeature.INDENT_OUTPUT);
-				jsonString = om.writeValueAsString(map);
-			} catch (JsonProcessingException e) {
+				om.writeValue(new FileOutputStream("tags-out.json", true), map);
+				System.out.println("tags-out.json" + " - was successfully written");
+
+			} catch (JsonParseException e1) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
+				e1.printStackTrace();
+			} catch (JsonMappingException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				// e1.printStackTrace();
 			}
-			
-			/*Prints system.out console to a file */
-			printStream(jsonString, "tags-out.json");
 
+			changeFileFormat(new File("tags-out.json"));
 		}
 	}
 
 	/*
-	 * An extension of Thread class that performs httpget method for multiple urls
+	 * An extension of Thread class that performs httpget method for multiple
+	 * urls
 	 */
 	static class GetThread extends Thread {
 
@@ -206,8 +228,8 @@ public class HtmlToJsonTagsParser1 {
 		}
 
 		/*
-		 * Executes the GetMethod and calls the appropriate parsing method for each of 
-		 * two cases 
+		 * Executes the GetMethod and calls the appropriate parsing method for
+		 * each of two cases
 		 */
 
 		@Override
@@ -259,50 +281,96 @@ public class HtmlToJsonTagsParser1 {
 		}
 
 	}
-	
-	/*Initiates multi-threading functionality*/
+
+	/* Initiates multi-threading functionality */
 
 	public static void initiateThreading(ArrayList<String> alist) throws InterruptedException {
-		/* Create a thread for each supplied URI*/
+		/* Create a thread for each supplied URI */
 		GetThread[] threads = new GetThread[alist.size()];
 		for (int i = 0; i < threads.length; i++) {
 			HttpGet httpget = new HttpGet(alist.get(i));
 			threads[i] = new GetThread(httpclient, httpget, i + 1);
 		}
 
-		/* Start the threads*/
+		/* Start the threads */
 		for (int j = 0; j < threads.length; j++) {
 			threads[j].start();
 		}
 
-		/* Join the threads*/
+		/* Join the threads */
 		for (int j = 0; j < threads.length; j++) {
 			threads[j].join();
 		}
 	}
 
-	
-
-	/*Prints the System.out console stream (Map content) to a file*/
-
-	public static void printStream(String jsonString, String fileOut) {
-
-		PrintStream printStream = null;
-		try {
-			printStream = new PrintStream(new FileOutputStream(fileOut, true));
-		} catch (FileNotFoundException e) { // TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		System.setOut(printStream);
-		System.out.println(jsonString);
-		printStream.flush();
-		printStream.close();
-		System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out)));
-		System.out.println(fileOut + " - was successfully written");
+	/* Configures http connection */
+	public static void configureConnection()
+			throws KeyManagementException, NoSuchAlgorithmException, KeyStoreException {
+		/* Trust self-signed certificates */
+		SSLContext sslcontext = SSLContexts.custom().loadTrustMaterial(null, new TrustSelfSignedStrategy()).build();
+		/* Allow TLSv1 protocol only */
+		SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslcontext, new String[] { "TLSv1" }, null,
+				SSLConnectionSocketFactory.getDefaultHostnameVerifier());
+		Registry<ConnectionSocketFactory> reg = RegistryBuilder.<ConnectionSocketFactory>create()
+				.register("https", sslsf).build();
+		/* Register a pooling connection manager */
+		HttpClientConnectionManager cm = new PoolingHttpClientConnectionManager(reg);
+		httpclient = HttpClients.custom().setConnectionManager(cm).build();
 
 	}
+
+	/**/
+
+	public static void changeFileFormat(File file) {
+
+		FileReader fr = null;
+		try {
+			fr = new FileReader(file);
+		} catch (FileNotFoundException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		String line = "";
+		String oldFileText = "";
+		String replace = null;
+		String search_1 = "\\}";
+		String newLine = "\r\n";
+		String search_2 = "\\{";
+		String replacement = ",";
+		try {
+			BufferedReader br = new BufferedReader(fr);
+
+			while ((line = br.readLine()) != null) {
+				oldFileText += line + "\r\n";
+
+			}
+			fr.close();
+		} catch (Exception e) {
+			System.out.println("Problem reading file.");
+		}
+
+		replace = oldFileText.replaceAll(search_1 + newLine + search_2, replacement);
+
+		FileOutputStream fileOut = null;
+		try {
+			fileOut = new FileOutputStream("tags-out.json");
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		try {
+			fileOut.write(replace.getBytes());
+
+			fileOut.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+
 	
-	/*Deletes each time the json file prior its re-creation*/
+	/* Deletes each time the json file prior its re-creation */
 
 	public static Boolean deleteFile(String fileName) {
 
@@ -320,30 +388,29 @@ public class HtmlToJsonTagsParser1 {
 		}
 		return false;
 	}
-	
-	/*Stores in a JAVA ArrayList unique tag pages urls - prevents duplicate values*/
+
+	/*
+	 * Stores in a JAVA ArrayList unique tag pages urls - prevents duplicate
+	 * values
+	 */
 
 	public static ArrayList<String> preventDuplicates(ArrayList<String> alist) {
 		ArrayList<String> result = new ArrayList<>();
 
-	
 		HashSet<String> hset = new HashSet<>();
-		
-			
-			for (String item : alist) {
 
-				
-				if (!hset.contains(item)) {
-					result.add(item);
-					hset.add(item);
-				}
+		for (String item : alist) {
+
+			if (!hset.contains(item)) {
+				result.add(item);
+				hset.add(item);
 			}
-				
+		}
+
 		return result;
 	}
-	
-	
-	/*Getters and Setters methods*/
+
+	/* Getters and Setters methods */
 
 	public static void setSelector(Integer sel) {
 		selector = sel;
@@ -366,12 +433,13 @@ public class HtmlToJsonTagsParser1 {
 		deleteFile("tags-out.json");
 
 		setSelector(0);
+		configureConnection();
 
 		try {
 			/* no threading */
 			parse_html_to_list();
-			
-			/*Multi-threading*/
+
+			/* Multi-threading */
 
 			initiateThreading(tagsUrl);
 
@@ -385,6 +453,8 @@ public class HtmlToJsonTagsParser1 {
 			setSelector(1);
 
 			initiateThreading(uniqueList);
+			
+			
 
 		} finally {
 			httpclient.close();
