@@ -12,6 +12,10 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContexts;
 
 import javax.net.ssl.SSLContext;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -36,5 +40,45 @@ public class Util {
             throw new IllegalStateException("Can't build tolerant httpclient. ", e);
         }
     }
+
+    public static File getOutputFile(String name) {
+        File parent = new File("out");
+        if(!parent.isDirectory()) parent.mkdir();
+        return new File(parent, name);
+    }
+
+
+    /* Read a file and return a String method */
+    public static String readFile(String fileName) throws IOException {
+        BufferedReader br = new BufferedReader(new FileReader(Util.getOutputFile(fileName)));
+        try {
+            StringBuilder sb = new StringBuilder();
+            String line = br.readLine();
+
+            while (line != null) {
+                sb.append(line);
+                sb.append("\n");
+                line = br.readLine();
+            }
+            return sb.toString();
+        } finally {
+            br.close();
+        }
+    }
+
+
+    static String computePath(String url, String baseUrl) {
+        if(url.startsWith(baseUrl))
+            url = url.substring(baseUrl.length());
+        if(url.startsWith("/bin/view"))
+            url = url.substring("/bin/view".length());
+        return url;
+    }
+
+    static String computePageFromUrl(String url, String baseUrl) {
+        String path = computePath(url, baseUrl);
+        return path.replaceAll("/", "__");
+    }
+
 
 }

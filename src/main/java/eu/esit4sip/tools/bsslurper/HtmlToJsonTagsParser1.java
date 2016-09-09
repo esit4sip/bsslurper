@@ -1,11 +1,6 @@
-package main.java.bsslurper;
+package eu.esit4sip.tools.bsslurper;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.KeyManagementException;
@@ -191,7 +186,7 @@ public class HtmlToJsonTagsParser1 {
 				
 				/*Writes the Map content to a json file */
 
-				om.writeValue(new FileOutputStream("tags-out.json", true), map);
+				om.writeValue(new FileOutputStream(Util.getOutputFile("tags-out.json"), true), map);
 				System.out.println("tags-out.json" + " - was successfully written");
 
 			} catch (JsonParseException e1) {
@@ -205,7 +200,7 @@ public class HtmlToJsonTagsParser1 {
 				// e1.printStackTrace();
 			}
 
-			changeFileFormat(new File("tags-out.json"));
+			changeFileFormat(Util.getOutputFile("tags-out.json"));
 		}
 	}
 
@@ -240,6 +235,7 @@ public class HtmlToJsonTagsParser1 {
 			try {
 				httpget.getURI();
 				httpget.addHeader(HttpHeaders.ACCEPT, "application/xml");
+				System.err.println("Getting: " + httpget.getURI());
 
 				ResponseHandler<String> responseHandler = new ResponseHandler<String>() {
 
@@ -258,8 +254,15 @@ public class HtmlToJsonTagsParser1 {
 				};
 
 				responseBody = httpclient.execute(httpget, responseHandler, context);
-				if (getSelector(selector) == 0) {
+				String u = httpget.getURI().getPath();
+				System.out.println("Path " + u);
+				u = u.replace("^.*/([^/]+)/([^/]+)$","\\1_\\2.html");
+				System.out.println("Saving " + u);
+				Writer out = new OutputStreamWriter(new FileOutputStream(Util.getOutputFile(u)));
+				out.write(responseBody);
+				out.flush(); out.close();
 
+				if (getSelector(selector) == 0) {
 					jsoupParsing(responseBody, 0);
 				} else {
 
@@ -303,21 +306,6 @@ public class HtmlToJsonTagsParser1 {
 		}
 	}
 
-	/* Configures http connection */
-	public static void configureConnection()
-			throws KeyManagementException, NoSuchAlgorithmException, KeyStoreException {
-		/* Trust self-signed certificates */
-		SSLContext sslcontext = SSLContexts.custom().loadTrustMaterial(null, new TrustSelfSignedStrategy()).build();
-		/* Allow TLSv1 protocol only */
-		SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslcontext, new String[] { "TLSv1" }, null,
-				SSLConnectionSocketFactory.getDefaultHostnameVerifier());
-		Registry<ConnectionSocketFactory> reg = RegistryBuilder.<ConnectionSocketFactory>create()
-				.register("https", sslsf).build();
-		/* Register a pooling connection manager */
-		HttpClientConnectionManager cm = new PoolingHttpClientConnectionManager(reg);
-		httpclient = HttpClients.custom().setConnectionManager(cm).build();
-
-	}
 
 	/**/
 
@@ -353,7 +341,7 @@ public class HtmlToJsonTagsParser1 {
 
 		FileOutputStream fileOut = null;
 		try {
-			fileOut = new FileOutputStream("tags-out.json");
+			fileOut = new FileOutputStream(Util.getOutputFile("tags-out.json"));
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -376,7 +364,7 @@ public class HtmlToJsonTagsParser1 {
 
 		try {
 
-			File file = new File(fileName);
+			File file = Util.getOutputFile(fileName);
 
 			if (file.delete())
 				return true;
@@ -433,7 +421,7 @@ public class HtmlToJsonTagsParser1 {
 		deleteFile("tags-out.json");
 
 		setSelector(0);
-		configureConnection();
+		httpclient = Util.createTolerantHttpClient();
 
 		try {
 			/* no threading */

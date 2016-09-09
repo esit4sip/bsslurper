@@ -43,31 +43,13 @@ public class WebToJsonParser1 {
 	public static String queryElement_title = "wikiexternallink";
 	public static CloseableHttpClient httpclient = Util.createTolerantHttpClient();
 
-	/* Read a file and return a String method */
-	public static String readFile(String fileName) throws IOException {
-		BufferedReader br = new BufferedReader(new FileReader(fileName));
-		try {
-			StringBuilder sb = new StringBuilder();
-			String line = br.readLine();
-
-			while (line != null) {
-				sb.append(line);
-				sb.append("\n");
-				line = br.readLine();
-			}
-			return sb.toString();
-		} finally {
-			br.close();
-		}
-	}
-	
 
 
 	/* A method to generate json from xml */
 	public static void xml_to_json(String file, String pageName,
 			Elements elements_title, Element element_res) throws IOException {
 		JsonFactory factory = new JsonFactory();
-		JsonGenerator generator = factory.createGenerator(new File(file),
+		JsonGenerator generator = factory.createGenerator(Util.getOutputFile(file),
 				JsonEncoding.UTF8);
 		generator.writeStartObject();
 		generator.writeStringField("Page", pageName);
@@ -75,7 +57,7 @@ public class WebToJsonParser1 {
 		generator.writeStringField("Result", element_res.outerHtml());
 		generator.writeEndObject();
 		generator.close();
-		System.out.println(readFile(file));
+		System.out.println(Util.readFile(file));
 	}
 
 	/* Method to parse html fragments to json (retain html formatting) */

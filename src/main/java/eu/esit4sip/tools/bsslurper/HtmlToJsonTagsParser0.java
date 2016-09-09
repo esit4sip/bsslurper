@@ -40,36 +40,18 @@ public class HtmlToJsonTagsParser0 {
 	public static String queryElement_tags_content = "xwikicontent";
 	public static CloseableHttpClient httpclient = Util.createTolerantHttpClient();
 
-	/* Read a file and return a String method */
-	public static String readFile(String fileName) throws IOException {
-		BufferedReader br = new BufferedReader(new FileReader(fileName));
-		try {
-			StringBuilder sb = new StringBuilder();
-			String line = br.readLine();
-
-			while (line != null) {
-				sb.append(line);
-				sb.append("\n");
-				line = br.readLine();
-			}
-			return sb.toString();
-		} finally {
-			br.close();
-		}
-	}
-
 	/* A method to generate json from xml */
-	public static void xml_to_json(String file, String tag_name, String tag_url)
+	public static void xml_to_json(String filename, String tag_name, String tag_url)
 			throws IOException {
 		JsonFactory factory = new JsonFactory();
-		JsonGenerator generator = factory.createGenerator(new File(file),
+		JsonGenerator generator = factory.createGenerator(Util.getOutputFile(filename),
 				JsonEncoding.UTF8);
 		generator.writeStartObject();
 		generator.writeStringField("Tag name", tag_name);
 		generator.writeStringField("Tag URL", tag_url);
 		generator.writeEndObject();
 		generator.close();
-		System.out.println(readFile(file));
+		System.out.println(Util.readFile(filename));
 	}
 
 	/* Method to parse html fragments to json */

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -56,7 +57,7 @@ public class TagHierarchyFetcher {
         }
 
         JsonGenerator generator = new JsonFactory().createGenerator(
-                new File("all-tags.json"), JsonEncoding.UTF8);
+                Util.getOutputFile("all-tags.json"), JsonEncoding.UTF8);
         generator.writeStartObject();
         for(Map.Entry<String,Map<String,String>> e : map.entrySet()) {
             generator.writeObjectFieldStart(e.getKey());
