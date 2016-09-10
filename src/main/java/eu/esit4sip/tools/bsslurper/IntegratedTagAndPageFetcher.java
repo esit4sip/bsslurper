@@ -37,7 +37,7 @@ public class IntegratedTagAndPageFetcher {
 
                 for(String path : paths) {
                     currentPath = baseUrl + path;
-                    System.out.println("Fetching " + currentPath);
+                    System.out.println("(" + getClass().getSimpleName() + ") Fetching " + currentPath);
                     HttpResponse response = client.execute(new HttpGet(baseUrl + path));
                     processResponse(EntityUtils.toString(response.getEntity()));
                 }
@@ -63,6 +63,7 @@ public class IntegratedTagAndPageFetcher {
                 } else if("ul".equals(child.nodeName()) && currentTerms!=null) {
                     for(Element li: child.children()) {
                         String text = li.text();
+                        if(text.equals("...")) continue;
                         int p = text.indexOf(":"), q = text.indexOf(")", p+1);
                         if(p==-1 || q == -1) {
                             System.err.println("Term badly formed: " + text);
@@ -115,9 +116,19 @@ public class IntegratedTagAndPageFetcher {
             try {
                 if(currentPath.endsWith("xpage=plain")) {
                     // simply store the page content
-                    // TODO: remove the part after Info
+                    // TODO: remove the part after <h1>Information</h1>, or Links or Metadata
+
                     Writer out = new OutputStreamWriter(
-                            new FileOutputStream(Util.computePageFromUrl(currentPath, baseUrl)));
+                            new FileOutputStream(
+                                    Util.getOutputFile(
+                                    Util.computePageFromUrl(currentPath, baseUrl))));
+                    int len = body.length();
+                    int l = Math.max(body.indexOf("<h1 id=\"HLinks\"><span>Links</span></h1>"), len),
+                        m = Math.max(body.indexOf("<h1 id=\"HMetadata\"><span>Metadata</span></h1>"), len),
+                        i = Math.max(body.indexOf("<h1 id=\"HInformation\"><span>Information</span></h1>"), len);
+                    if(l<len || m<len || l<len)
+                        body.substring(Math.min(l, Math.min(m,i)));
+
                     out.write(body);
                     out.flush();
                     out.close();
@@ -125,10 +136,16 @@ public class IntegratedTagAndPageFetcher {
                     // grasp the title
                     Document doc = Jsoup.parse(body);
                     Element elt = doc.getElementsByTag("title").first();
-                    if(elt!=null)
-                        pageTitles.put(currentPath, elt.text());
-                    else
-                        pageTitles.put(currentPath, "--missing-title--");
+                    String name = Util.computePath(currentPath, baseUrl);
+                    if(elt!=null) {
+                        String title = elt.text();
+                        if(title.endsWith(" - XWiki"))
+                            title = title.substring(0, title.length()-" - XWiki".length());
+                        title = title .replaceAll("\\([^)]*\\)", "");
+                        title = title.trim();
+                        pageTitles.put(name, title);
+                    } else
+                        pageTitles.put(name, "--missing-title--");
                 }
 
             } catch (IOException e) {
@@ -170,7 +187,7 @@ public class IntegratedTagAndPageFetcher {
 
         // now fetch all pages (and their title)
         for(String pagePath: pages) {
-            f = new PagesFetcher(pagePath);
+            f = new PagesFetcher("/bin/view" + pagePath);
             f.run();
         }
 
@@ -183,13 +200,18 @@ public class IntegratedTagAndPageFetcher {
 
         // TODO: replace tagsPages with mapped URLs (as file names)
         // TODO: output the json objects (all-tags.json from topicDivisions, tagsPages.json, pages.json
+
+        //writeMap("tags.json", topicDivisions);
+        //writeMap("tagsPages.json", tagsPages);
+        //writeMap("pages.json", pageTitles);
+        //net.sf.json.JSONSerializer.toJSON(topicDivisions);
     }
 
 
     void writeMap(String name, Object obj) {
         try {
             JsonGenerator generator = new JsonFactory().createGenerator(
-                    Util.getOutputFile("all-tags.json"), JsonEncoding.UTF8);
+                    Util.getOutputFile(name), JsonEncoding.UTF8);
             writeObject(generator, obj);
             generator.close();
         } catch (IOException e) {
@@ -213,9 +235,17 @@ public class IntegratedTagAndPageFetcher {
             }
             else if(obj instanceof Collection) {
                 Collection coll = (Collection) obj;
-                // TODO: complemeent
-            }
-            // TODO: also do the other types (string especially
+                generator.writeStartArray();
+                for(Object o : coll) {
+                    generator.writeArrayFieldStart("");
+                    writeObject(generator, o);
+                }
+                generator.writeEndArray();
+            } else if(obj instanceof String) {
+                generator.writeString((String) obj);
+            } else if (obj instanceof Integer) {
+                generator.writeNumber((Integer) obj);
+            } else if(obj==null) generator.writeNull();
         } catch (IOException e) {
             e.printStackTrace();
         }

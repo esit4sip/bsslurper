@@ -12,10 +12,8 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContexts;
 
 import javax.net.ssl.SSLContext;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
+import java.net.URLDecoder;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -42,15 +40,25 @@ public class Util {
     }
 
     public static File getOutputFile(String name) {
-        File parent = new File("out");
-        if(!parent.isDirectory()) parent.mkdir();
+        File parent = null;
+        try {
+            parent = new File("out");
+            if(!parent.isDirectory()) parent.mkdir();
+            name = name.replaceAll("^_*","").replaceAll("_*$","");
+            name = name.replaceAll("\\+", "-");
+            name = URLDecoder.decode(name, "utf-8");
+            name = name.replaceAll("__","_");
+            if(!name.contains(".")) name = name + ".html";
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
         return new File(parent, name);
     }
 
 
     /* Read a file and return a String method */
     public static String readFile(String fileName) throws IOException {
-        BufferedReader br = new BufferedReader(new FileReader(Util.getOutputFile(fileName)));
+        BufferedReader br = new BufferedReader(new FileReader(fileName));
         try {
             StringBuilder sb = new StringBuilder();
             String line = br.readLine();
@@ -72,6 +80,7 @@ public class Util {
             url = url.substring(baseUrl.length());
         if(url.startsWith("/bin/view"))
             url = url.substring("/bin/view".length());
+        if(url.contains("?")) url = url.substring(0, url.indexOf("?"));
         return url;
     }
 
