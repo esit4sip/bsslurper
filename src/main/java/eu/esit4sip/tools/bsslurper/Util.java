@@ -42,6 +42,7 @@ public class Util {
     public static File getOutputFile(String name) {
         File parent = null;
         try {
+            System.out.println("From name : " + name);
             parent = new File("out");
             if(!parent.isDirectory()) parent.mkdir();
             name = name.replaceAll("^_*","").replaceAll("_*$","");
@@ -52,6 +53,7 @@ public class Util {
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
+        System.out.println("To file name: " + name);
         return new File(parent, name);
     }
 

@@ -3,6 +3,8 @@ package eu.esit4sip.tools.bsslurper;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
+import net.sf.json.JSONSerializer;
+import net.sf.json.JsonConfig;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -12,10 +14,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.IOException;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import java.io.*;
 import java.util.*;
 
 public class IntegratedTagAndPageFetcher {
@@ -191,66 +190,49 @@ public class IntegratedTagAndPageFetcher {
             f.run();
         }
 
+        // TODO: replace tagsPages with mapped URLs (as file names)
+        Set<String> tagsSet = new TreeSet(tagsPages.keySet());
+        for(String tag: tagsSet) {
+            Set<String> newPages = new TreeSet<String>();
+            for(String page: tagsPages.get(tag)) {
+                newPages.add(Util.getOutputFile(Util.computePageFromUrl(page, baseUrl)).getName());
+            }
+            tagsPages.put(tag, newPages);
+        }
+        Map<String,String> pageTitles2 = new TreeMap<String,String>();
+        for(Map.Entry<String,String>p: pageTitles.entrySet()) {
+            pageTitles2.put(Util.getOutputFile(Util.computePageFromUrl(p.getKey(), baseUrl)).getName(), p.getValue());
+        }
+
+
         System.out.println(" ================ tags =============== ");
         System.out.println(topicDivisions);
         System.out.println(" ================ tagsPages =============== ");
         System.out.println(tagsPages);
         System.out.println(" ================ pages =============== ");
-        System.out.println(pageTitles);
+        System.out.println(pageTitles2);
 
-        // TODO: replace tagsPages with mapped URLs (as file names)
-        // TODO: output the json objects (all-tags.json from topicDivisions, tagsPages.json, pages.json
-
-        //writeMap("tags.json", topicDivisions);
-        //writeMap("tagsPages.json", tagsPages);
-        //writeMap("pages.json", pageTitles);
-        //net.sf.json.JSONSerializer.toJSON(topicDivisions);
+        // output the json objects (all-tags.json from topicDivisions, tagsPages.json, pages.json
+        writeMap("tags.json", topicDivisions);
+        writeMap("tagsPages.json", tagsPages);
+        writeMap("pages.json", pageTitles2);
     }
 
-
-    void writeMap(String name, Object obj) {
+    private void writeMap(String fileName, Object map) {
         try {
-            JsonGenerator generator = new JsonFactory().createGenerator(
-                    Util.getOutputFile(name), JsonEncoding.UTF8);
-            writeObject(generator, obj);
-            generator.close();
+            File outputFile = Util.getOutputFile(fileName);
+            System.out.println("Outputting: " + outputFile);
+            Writer out = new OutputStreamWriter(new FileOutputStream(outputFile),"utf-8");
+            JsonConfig config = new JsonConfig();
+            out.write(JSONSerializer.toJSON(map, config).toString());
+            out.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
 
     }
 
-    void writeObject(JsonGenerator generator, Object obj) {
-        try {
-            if(obj instanceof Map) {
-                Map m = (Map) obj;
-                generator.writeStartObject();
-                for(Object e : m.entrySet()) {
-                    Map.Entry entry = (Map.Entry) e;
-                    generator.writeObjectFieldStart((String) entry.getKey());
-                    writeObject(generator, entry.getValue());
-                    generator.writeEndObject();
-                }
-                generator.writeEndObject();
-            }
-            else if(obj instanceof Collection) {
-                Collection coll = (Collection) obj;
-                generator.writeStartArray();
-                for(Object o : coll) {
-                    generator.writeArrayFieldStart("");
-                    writeObject(generator, o);
-                }
-                generator.writeEndArray();
-            } else if(obj instanceof String) {
-                generator.writeString((String) obj);
-            } else if (obj instanceof Integer) {
-                generator.writeNumber((Integer) obj);
-            } else if(obj==null) generator.writeNull();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
-    }
 
     public static void main(String[] args) {
         new IntegratedTagAndPageFetcher().run();
