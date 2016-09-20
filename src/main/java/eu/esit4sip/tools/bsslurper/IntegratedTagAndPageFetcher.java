@@ -1,8 +1,5 @@
 package eu.esit4sip.tools.bsslurper;
 
-import com.fasterxml.jackson.core.JsonEncoding;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
 import net.sf.json.JSONSerializer;
 import net.sf.json.JsonConfig;
 import org.apache.http.HttpResponse;
@@ -115,22 +112,40 @@ public class IntegratedTagAndPageFetcher {
             try {
                 if(currentPath.endsWith("xpage=plain")) {
                     // simply store the page content
-                    // TODO: remove the part after <h1>Information</h1>, or Links or Metadata
-
-                    Writer out = new OutputStreamWriter(
-                            new FileOutputStream(
-                                    Util.getOutputFile(
-                                    Util.computePageFromUrl(currentPath, baseUrl))));
+                    File file = Util.getOutputFile(
+                            Util.computePageFromUrl(currentPath, baseUrl));
+                    Writer out = new OutputStreamWriter( new FileOutputStream(file));
                     int len = body.length();
                     int l = Math.max(body.indexOf("<h1 id=\"HLinks\"><span>Links</span></h1>"), len),
                         m = Math.max(body.indexOf("<h1 id=\"HMetadata\"><span>Metadata</span></h1>"), len),
                         i = Math.max(body.indexOf("<h1 id=\"HInformation\"><span>Information</span></h1>"), len);
                     if(l<len || m<len || l<len)
-                        body.substring(Math.min(l, Math.min(m,i)));
+                        body = body.substring(Math.min(l, Math.min(m,i)));
 
                     out.write(body);
                     out.flush();
                     out.close();
+
+                    // put the start of the content into the content, max 100 chars
+                    // first remove the <h1> in there
+                    int p = body.indexOf("</h1>");
+                    if(p>-1) body = body.substring(p+"</h1>".length());
+                    // then remove all tags
+                    body = body.replaceAll("<[^>]*>","");
+                    body = body.replaceAll("\r|\n|\t|&nbsp;"," ");
+                    if(body.startsWith("Description:")) body = body.substring("Description:".length());
+                    if(body.length()>100) {
+                        // get last period
+                        for(i=0; i<100; ) {
+                            p = i;
+                            i = body.indexOf(".",i+1);
+                        }
+                        // include the period
+                        p = p+1;
+                        if(p>100 || p<50) p = 100;
+                        body = body.substring(0,p);
+                    }
+                    pageContent.put(file.getName(), body);
                 } else {
                     // grasp the title
                     Document doc = Jsoup.parse(body);
@@ -141,6 +156,8 @@ public class IntegratedTagAndPageFetcher {
                         if(title.endsWith(" - XWiki"))
                             title = title.substring(0, title.length()-" - XWiki".length());
                         title = title .replaceAll("\\([^)]*\\)", "");
+                        if(title.endsWith(".WebHome")) title = title.substring(0, title.length()-".WebHome".length());
+                        if(title.endsWith(".WebHome)")) title = title.substring(0, title.length()-".WebHome)".length());
                         title = title.trim();
                         pageTitles.put(name, title);
                     } else
@@ -160,7 +177,7 @@ public class IntegratedTagAndPageFetcher {
 
     Map<String, Set<String>> tagsPages = new TreeMap<String, Set<String>>();
     Map<String, Map<String,String>> topicDivisions = new TreeMap<String, Map<String, String>>();
-    Map<String, String> pageTitles = new TreeMap<String, String>();
+    Map<String, String> pageTitles = new TreeMap<String, String>(), pageContent = new TreeMap<String,String>();
 
 
 
@@ -190,7 +207,6 @@ public class IntegratedTagAndPageFetcher {
             f.run();
         }
 
-        // TODO: replace tagsPages with mapped URLs (as file names)
         Set<String> tagsSet = new TreeSet(tagsPages.keySet());
         for(String tag: tagsSet) {
             Set<String> newPages = new TreeSet<String>();
@@ -213,8 +229,44 @@ public class IntegratedTagAndPageFetcher {
         System.out.println(pageTitles2);
 
         // output the json objects (all-tags.json from topicDivisions, tagsPages.json, pages.json
-        writeMap("tags.json", topicDivisions);
-        writeMap("tagsPages.json", tagsPages);
+
+        // JSON Tags for the web-site are like
+        // [  {"groupname":"Domain", "tags": ["math":"Mathematics", ...]},
+        //   ...]
+        List<Map<String,Object>> tagsJson = new LinkedList<Map<String,Object>>();
+        for(String groupName: topicDivisions.keySet()) {
+            Map<String, Object> group = new HashMap<String,Object>();
+            group.put("groupname", groupName);
+            Map<String,String> tags = new TreeMap<String,String>();
+            for(Map.Entry<String,String> entry: topicDivisions.get(groupName).entrySet()) {
+                tags.put(entry.getKey(), entry.getValue());
+            }
+            group.put("tags", tags);
+            tagsJson.add(group);
+        }
+        writeMap("tags.json", tagsJson);
+
+        // JSON articles.json sample:
+        // [  {"name":"Article 1", "description":"Lorem", "url":"article1.html", "tags": ["mathematics", "Tag 12", "tablets"] }, ...]
+
+        List<Map<String,Object>> articlesJSON = new LinkedList<Map<String,Object>> ();
+        for(Map.Entry<String,String> pageAndTitle: pageTitles2.entrySet()) {
+            // now fetch the tags
+            Map<String, Object> article = new HashMap<String,Object>();
+            String pageName = pageAndTitle.getKey();
+            article.put("url", pageName);
+            article.put("title", pageAndTitle.getValue());
+            List<String> tags = new LinkedList<String>();
+            for(String tag: tagsPages.keySet()) {
+                for(String p: tagsPages.get(tag)) {
+                    if(pageName.equals(p)) tags.add(tag);
+                }
+            }
+            article.put("tags", tags);
+            article.put("description", pageContent.get(pageName));
+            articlesJSON.add(article);
+        }
+        writeMap("articles.json", articlesJSON);
         writeMap("pages.json", pageTitles2);
     }
 
