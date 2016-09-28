@@ -2,6 +2,7 @@ package eu.esit4sip.tools.bsslurper;
 
 import net.sf.json.JSONSerializer;
 import net.sf.json.JsonConfig;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -12,6 +13,8 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 public class IntegratedTagAndPageFetcher {
@@ -238,8 +241,10 @@ public class IntegratedTagAndPageFetcher {
             Map<String, Object> group = new HashMap<String,Object>();
             group.put("groupname", groupName);
             Map<String,String> tags = new TreeMap<String,String>();
+            //List<String> tags = new LinkedList<String>();
             for(Map.Entry<String,String> entry: topicDivisions.get(groupName).entrySet()) {
                 tags.put(entry.getKey(), entry.getValue());
+                //tags.add(entry.getKey());
             }
             group.put("tags", tags);
             tagsJson.add(group);
@@ -255,7 +260,8 @@ public class IntegratedTagAndPageFetcher {
             Map<String, Object> article = new HashMap<String,Object>();
             String pageName = pageAndTitle.getKey();
             article.put("url", pageName);
-            article.put("title", pageAndTitle.getValue());
+            article.put("name", pageAndTitle.getValue());
+            article.put("id", DigestUtils.md5Hex(pageName));
             List<String> tags = new LinkedList<String>();
             for(String tag: tagsPages.keySet()) {
                 for(String p: tagsPages.get(tag)) {
@@ -267,7 +273,7 @@ public class IntegratedTagAndPageFetcher {
             articlesJSON.add(article);
         }
         writeMap("articles.json", articlesJSON);
-        writeMap("pages.json", pageTitles2);
+        //writeMap("pages.json", pageTitles2);
     }
 
     private void writeMap(String fileName, Object map) {
