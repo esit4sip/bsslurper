@@ -13,15 +13,17 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.*;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class IntegratedTagAndPageFetcher {
 
 
-    HttpClient client = Util.createTolerantHttpClient();
-    String baseUrl = "https://wiki.esit4sip.eu";
+    static HttpClient client = Util.createTolerantHttpClient();
+    static String baseUrl = "https://wiki.esit4sip.eu";
+    static Pattern internalImgPattern = Pattern.compile("<img src=\"([^\"]*/([^/\"]*))\""),
+        internalLinkPattern = Pattern.compile("<a href=\"(" + baseUrl  + "/bin/view/[^\"]*)\"( |>)");
 
     abstract class Spider {
         Spider(List<String> paths) {
@@ -46,6 +48,22 @@ public class IntegratedTagAndPageFetcher {
         }
 
         abstract void processResponse(String body);
+
+        byte[] byteBuff = new byte[10240];
+        public void fetchFile(String filePath, String receivePath) throws IOException {
+            System.out.println("Saving file " + filePath);
+            HttpResponse response = client.execute(new HttpGet(baseUrl + filePath));
+            InputStream inS = response.getEntity().getContent();
+            String dir = receivePath.substring(0, receivePath.lastIndexOf('/'));
+            System.out.println("Mkdir dir " + dir);
+            new File(dir).mkdirs();
+            FileOutputStream fOut = new FileOutputStream(receivePath);
+            int r = 0;
+            while((r=inS.read(byteBuff))>-1) {
+                fOut.write(byteBuff, 0, r);
+            }
+            fOut.flush(); fOut.close();
+        }
     }
 
     class TagsListFetcher extends Spider {
@@ -114,16 +132,44 @@ public class IntegratedTagAndPageFetcher {
         void processResponse(String body) {
             try {
                 if(currentPath.endsWith("xpage=plain")) {
+                    // first reformulate and fetch pictures
+                    StringBuffer buff = new StringBuffer(body);
+                    Matcher matcher = internalImgPattern.matcher(buff);
+                    int off = 0;
+                    while(matcher.find(off)) {
+                        String fileName = matcher.group(2), filePath = matcher.group(1);
+                        super.fetchFile(filePath, "out/pictures/" + fileName);
+                        fileName = "data/pictures/" + fileName;
+                        buff.replace(matcher.start(), matcher.end(), "<img src=\"" + fileName + "\" ");
+                        off = matcher.start()+ fileName.length();
+                    }
+
+                    // then reformulate internal links
+                    matcher = internalLinkPattern.matcher(buff);
+                    System.out.println("Pattern: " + internalLinkPattern);
+                    off = 0;
+                    while(matcher.find(off)) {
+                        System.out.println("Found href " + matcher.group());
+                        buff.replace(matcher.start(), matcher.end(), "<a onclick=\"displayArticle('" +
+                            Util.computePageFromUrl(matcher.group(1),baseUrl).replaceAll("__","_") + ".html'); return false;\"" + matcher.group(2));
+                        off = matcher.start()+1;
+                    }
+
+                    body = buff.toString();
+
                     // simply store the page content
                     File file = Util.getOutputFile(
                             Util.computePageFromUrl(currentPath, baseUrl));
                     Writer out = new OutputStreamWriter( new FileOutputStream(file));
+                    //out.write("----\ntitle: " + file.getName() + "\n----\n");
                     int len = body.length();
-                    int l = Math.max(body.indexOf("<h1 id=\"HLinks\"><span>Links</span></h1>"), len),
-                        m = Math.max(body.indexOf("<h1 id=\"HMetadata\"><span>Metadata</span></h1>"), len),
-                        i = Math.max(body.indexOf("<h1 id=\"HInformation\"><span>Information</span></h1>"), len);
-                    if(l<len || m<len || l<len)
-                        body = body.substring(Math.min(l, Math.min(m,i)));
+
+                    int l = body.indexOf("<h1 id=\"HLinks\"><span>Links</span></h1>");
+                    if(l>-1) body = body.substring(0,l);
+                    l = body.indexOf("<h1 id=\"HMetadata\"><span>Metadata</span></h1>");
+                    if(l>-1) body = body.substring(0,l);
+                    l = body.indexOf("<h1 id=\"HInformation\"><span>Information</span></h1>");
+                    if(l>-1) body = body.substring(0,l);
 
                     out.write(body);
                     out.flush();
@@ -139,7 +185,7 @@ public class IntegratedTagAndPageFetcher {
                     if(body.startsWith("Description:")) body = body.substring("Description:".length());
                     if(body.length()>100) {
                         // get last period
-                        for(i=0; i<100; ) {
+                        for(int i=0; i<100; ) {
                             p = i;
                             i = body.indexOf(".",i+1);
                         }
@@ -147,8 +193,10 @@ public class IntegratedTagAndPageFetcher {
                         p = p+1;
                         if(p>100 || p<50) p = 100;
                         body = body.substring(0,p);
+                        if(p<100) body = body + "...";
                     }
                     pageContent.put(file.getName(), body);
+
                 } else {
                     // grasp the title
                     Document doc = Jsoup.parse(body);
@@ -282,6 +330,7 @@ public class IntegratedTagAndPageFetcher {
             System.out.println("Outputting: " + outputFile);
             Writer out = new OutputStreamWriter(new FileOutputStream(outputFile),"utf-8");
             JsonConfig config = new JsonConfig();
+            // out.write("----\ntitle: " + fileName + "\n----\n");
             out.write(JSONSerializer.toJSON(map, config).toString());
             out.close();
         } catch (IOException e) {

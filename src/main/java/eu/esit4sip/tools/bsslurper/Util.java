@@ -49,6 +49,7 @@ public class Util {
             name = name.replaceAll("\\+", "-");
             name = URLDecoder.decode(name, "utf-8");
             name = name.replaceAll("__","_");
+            name = name.replaceAll("[^A-Za-z_\\.\\-]","");
             if(!name.contains(".")) name = name + ".html";
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
@@ -88,6 +89,8 @@ public class Util {
 
     static String computePageFromUrl(String url, String baseUrl) {
         String path = computePath(url, baseUrl);
+        if(path.startsWith("/")) path = path.substring(1);
+        if(path.endsWith("/")) path = path.substring(0, path.length()-1);
         return path.replaceAll("/", "__");
     }
 
