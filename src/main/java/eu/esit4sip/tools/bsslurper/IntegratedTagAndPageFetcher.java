@@ -51,7 +51,7 @@ public class IntegratedTagAndPageFetcher {
 
         byte[] byteBuff = new byte[10240];
         public void fetchFile(String filePath, String receivePath) throws IOException {
-            System.out.println("Saving file " + filePath);
+            System.out.println("Saving file " + receivePath);
             HttpResponse response = client.execute(new HttpGet(baseUrl + filePath));
             InputStream inS = response.getEntity().getContent();
             String dir = receivePath.substring(0, receivePath.lastIndexOf('/'));
@@ -166,8 +166,10 @@ public class IntegratedTagAndPageFetcher {
                     int len = body.length();
 
                     int l = body.indexOf("<h1 id=\"HLinks\"><span>Links</span></h1>");
+                    if(l==-1) l = body.indexOf("<h2 id=\"HLinks\"><span>Links</span></h2>");
                     if(l>-1) body = body.substring(0,l);
                     l = body.indexOf("<h1 id=\"HMetadata\"><span>Metadata</span></h1>");
+                    if(l==-1) l = body.indexOf("<h2 id=\"HMetadata\"><span>Metadata</span></h2>");
                     if(l>-1) body = body.substring(0,l);
                     l = body.indexOf("<h1 id=\"HInformation\"><span>Information</span></h1>");
                     if(l>-1) body = body.substring(0,l);
