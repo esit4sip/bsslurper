@@ -51,18 +51,24 @@ public class IntegratedTagAndPageFetcher {
 
         byte[] byteBuff = new byte[10240];
         public void fetchFile(String filePath, String receivePath) throws IOException {
-            System.out.println("Saving file " + receivePath);
-            HttpResponse response = client.execute(new HttpGet(baseUrl + filePath));
-            InputStream inS = response.getEntity().getContent();
-            String dir = receivePath.substring(0, receivePath.lastIndexOf('/'));
-            System.out.println("Mkdir dir " + dir);
-            new File(dir).mkdirs();
-            FileOutputStream fOut = new FileOutputStream(receivePath);
-            int r = 0;
-            while((r=inS.read(byteBuff))>-1) {
-                fOut.write(byteBuff, 0, r);
+            try {
+                System.out.println("Saving file " + receivePath);
+                HttpResponse response = client.execute(new HttpGet(baseUrl + filePath));
+                InputStream inS = response.getEntity().getContent();
+                String dir = receivePath.substring(0, receivePath.lastIndexOf('/'));
+                System.out.println("Mkdir dir " + dir);
+                new File(dir).mkdirs();
+                FileOutputStream fOut = new FileOutputStream(receivePath);
+                int r = 0;
+                while((r=inS.read(byteBuff))>-1) {
+                    fOut.write(byteBuff, 0, r);
+                }
+                fOut.flush();
+                fOut.close();
+            } catch (Exception e) {
+                System.err.println("Couldn't fetch \"" + filePath + "\" into " + filePath + ".");
+                e.printStackTrace();
             }
-            fOut.flush(); fOut.close();
         }
     }
 
