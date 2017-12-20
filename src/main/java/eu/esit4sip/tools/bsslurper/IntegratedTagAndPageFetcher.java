@@ -145,6 +145,7 @@ public class IntegratedTagAndPageFetcher {
                     while(matcher.find(off)) {
                         String fileName = matcher.group(2), filePath = matcher.group(1);
                         fileName = fileName.replaceAll("\\??width=[0-9]+\\&?(amp;)?","");
+                        fileName = fileName.replaceAll("\\??height=[0-9]+\\&?(amp;)?","");
                         super.fetchFile(filePath, "out/pictures/" + fileName);
                         fileName = "data/pictures/" + fileName;
                         buff.replace(matcher.start(), matcher.end(), "<img src=\"" + fileName + "\" ");
